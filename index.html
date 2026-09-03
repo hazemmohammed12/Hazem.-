@@ -1,0 +1,837 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hazem-Tech AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* تصغير الخط العام للواجهة ليصبح 13px بدلاً من 15px */
+        body { font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; font-size: 13.5px; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+
+        .wave-bar {
+            width: 3px;
+            background-color: #818cf8;
+            border-radius: 3px;
+            animation: pulse 1.2s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { height: 8px; opacity: 0.4; }
+            50% { height: 26px; opacity: 1; background-color: #818cf8; }
+        }
+    </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 h-[100dvh] flex flex-col overflow-hidden relative select-none">
+
+    <div id="overlay" class="fixed inset-0 bg-black/75 z-30 hidden backdrop-blur-sm"></div>
+
+    <!-- قائمة اختيار النموذج -->
+    <div id="model-dropdown" class="hidden absolute top-14 right-1/2 transform translate-x-1/2 bg-slate-900 border border-slate-800 rounded-3xl p-3 shadow-2xl w-72 z-50 space-y-2">
+        <button onclick="selectModel('gemini-3.5-flash-lite', 'Hazem 3.5 Flash-Lite')"
+            class="model-option w-full p-2.5 rounded-2xl bg-slate-800/50 hover:bg-slate-800 text-right transition flex items-center justify-between border border-transparent">
+            <div>
+                <div class="text-xs font-black text-slate-100">Hazem 3.5 Flash-Lite</div>
+                <div class="text-[11px] text-slate-400">سريع ومثالي للاستجابات اليومية</div>
+            </div>
+            <span id="check-lite" class="text-indigo-400 font-bold text-xs">✓</span>
+        </button>
+
+        <button onclick="selectModel('gemini-3.6-flash', 'Hazem 3.6 Flash')"
+            class="model-option w-full p-2.5 rounded-2xl bg-slate-800/50 hover:bg-slate-800 text-right transition flex items-center justify-between border border-transparent">
+            <div>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-black text-slate-100">Hazem 3.6 Flash</span>
+                    <span class="bg-indigo-500/20 text-indigo-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold">موصى به</span>
+                </div>
+                <div class="text-[11px] text-slate-400">تفكير متقدم وتحليل دقيق</div>
+            </div>
+            <span id="check-flash" class="text-indigo-400 font-bold text-xs hidden">✓</span>
+        </button>
+
+        <button onclick="selectModel('gemini-3.0-pro', 'Hazem Pro 3.0')"
+            class="model-option w-full p-2.5 rounded-2xl bg-slate-800/50 hover:bg-slate-800 text-right transition flex items-center justify-between border border-transparent">
+            <div>
+                <div class="text-xs font-black text-slate-100">Hazem Pro 3.0</div>
+                <div class="text-[11px] text-slate-400">للمهام المعقدة والأكواد البرمجية</div>
+            </div>
+            <span id="check-pro" class="text-indigo-400 font-bold text-xs hidden">✓</span>
+        </button>
+    </div>
+
+    <!-- قائمة الثلاث نقط العلوية (على الشمال) -->
+    <div id="header-options-menu"
+        class="hidden absolute top-14 left-4 bg-slate-900/95 border border-slate-800 rounded-3xl p-3 shadow-2xl w-64 z-50 space-y-1 text-xs backdrop-blur-md">
+        <button onclick="exportToGoogleDocs()" class="w-full p-2.5 rounded-2xl hover:bg-slate-800 text-right flex items-center justify-between transition">
+            <span class="text-slate-200 font-bold">مشاركة مع Google Docs</span>
+            <span class="text-slate-400">📄</span>
+        </button>
+        <button onclick="exportToPDF()" class="w-full p-2.5 rounded-2xl hover:bg-slate-800 text-right flex items-center justify-between transition">
+            <span class="text-slate-200 font-bold">حفظ كـ PDF</span>
+            <span class="text-slate-400">📥</span>
+        </button>
+        <button onclick="shareChat()" class="w-full p-2.5 rounded-2xl hover:bg-slate-800 text-right flex items-center justify-between transition">
+            <span class="text-slate-200 font-bold">مشاركة المحادثة</span>
+            <span class="text-slate-400">📤</span>
+        </button>
+        <button onclick="pinChat(currentChatId)" class="w-full p-2.5 rounded-2xl hover:bg-slate-800 text-right flex items-center justify-between transition">
+            <span class="text-slate-200 font-bold">تثبيت</span>
+            <span class="text-slate-400">📌</span>
+        </button>
+        <button onclick="renameCurrentChat()" class="w-full p-2.5 rounded-2xl hover:bg-slate-800 text-right flex items-center justify-between transition">
+            <span class="text-slate-200 font-bold">إعادة التسمية</span>
+            <span class="text-slate-400">✏️</span>
+        </button>
+        <div class="border-t border-slate-800 my-1"></div>
+        <button onclick="deleteCurrentChat()" class="w-full p-2.5 rounded-2xl hover:bg-rose-950/40 text-rose-400 text-right flex items-center justify-between transition font-bold">
+            <span>حذف</span>
+            <span>🗑️</span>
+        </button>
+    </div>
+
+    <!-- قائمة الثلاث نقط للعناصر في السجل الجانبي -->
+    <div id="chat-item-popover"
+        class="hidden fixed bg-slate-900 border border-slate-800 rounded-2xl p-2 shadow-2xl w-52 z-50 space-y-1 text-xs backdrop-blur-md">
+        <button id="popover-share" class="w-full p-2 rounded-xl hover:bg-slate-800 text-right flex items-center justify-between transition">
+            <span class="text-slate-200 font-bold">مشاركة المحادثة</span>
+            <span class="text-slate-400">📤</span>
+        </button>
+        <button id="popover-pin" class="w-full p-2 rounded-xl hover:bg-slate-800 text-right flex items-center justify-between transition">
+            <span class="text-slate-200 font-bold">تثبيت</span>
+            <span class="text-slate-400">📌</span>
+        </button>
+        <button id="popover-rename" class="w-full p-2 rounded-xl hover:bg-slate-800 text-right flex items-center justify-between transition">
+            <span class="text-slate-200 font-bold">إعادة التسمية</span>
+            <span class="text-slate-400">✏️</span>
+        </button>
+        <div class="border-t border-slate-800 my-0.5"></div>
+        <button id="popover-delete" class="w-full p-2 rounded-xl hover:bg-rose-950/40 text-rose-400 text-right flex items-center justify-between transition">
+            <span class="font-bold">حذف</span>
+            <span>🗑️</span>
+        </button>
+    </div>
+
+    <!-- القائمة الجانبية -->
+    <aside id="sidebar"
+        class="w-72 bg-slate-900 border-l border-slate-800 flex flex-col justify-between p-4 fixed top-0 right-0 bottom-0 z-40 transform translate-x-full transition-transform duration-300 ease-out shadow-2xl">
+        <div class="space-y-4">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-xs font-bold">
+                        ⚡
+                    </div>
+                    <span class="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 text-xs">
+                        Hazem-Tech AI
+                    </span>
+                </div>
+                <button id="close-sidebar-btn" class="w-7 h-7 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs">
+                    ✕
+                </button>
+            </div>
+
+            <button id="new-chat-btn"
+                class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md shadow-indigo-600/20 flex items-center justify-center gap-1.5">
+                <span class="text-sm">+</span> محادثة جديدة
+            </button>
+
+            <div class="pt-1">
+                <p class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">
+                    السجل الأخير
+                </p>
+                <div id="history-list" class="space-y-1.5 max-h-[60vh] overflow-y-auto text-xs pr-1"></div>
+            </div>
+        </div>
+
+        <div class="text-[11px] text-slate-500 border-t border-slate-800 pt-3 text-center">
+            Hazem-Tech AI Studio <span class="text-indigo-400 font-bold">v22.0</span>
+        </div>
+    </aside>
+
+    <!-- الهيدر الرئيسي -->
+    <header class="p-3 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between z-10 shrink-0">
+        <button id="open-sidebar-btn"
+            class="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+            <span>☰</span>
+            <span>السجل</span>
+        </button>
+
+        <button id="model-select-btn"
+            class="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/80 hover:bg-slate-800 px-3.5 py-1.5 rounded-2xl text-xs font-extrabold text-slate-200 transition">
+            <span id="selected-model-name">Hazem 3.5 Flash-Lite</span>
+            <span class="text-[10px] text-slate-400">▼</span>
+        </button>
+
+        <!-- زر الثلاث نقط في الشمال العلوي -->
+        <button id="header-options-btn" title="الخيارات"
+            class="w-8 h-8 rounded-xl bg-slate-800/80 border border-slate-700/80 text-slate-300 hover:text-white flex items-center justify-center text-base font-bold transition">
+            ⋮
+        </button>
+    </header>
+
+    <!-- منطقة الشات -->
+    <main id="chat-section" class="flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl mx-auto w-full">
+        <div id="welcome-screen" class="text-center py-10 space-y-4">
+            <div class="w-14 h-14 bg-gradient-to-tr from-indigo-600/30 to-purple-600/30 text-indigo-400 rounded-full mx-auto flex items-center justify-center text-2xl border border-indigo-500/30 shadow-xl shadow-indigo-500/10">
+                ✨
+            </div>
+            <div class="space-y-1">
+                <h2 class="font-extrabold text-xs text-slate-100">
+                    أهلاً بك في Hazem-Tech AI
+                </h2>
+                <p class="text-[11px] text-slate-400 max-w-md mx-auto leading-relaxed">
+                    مساعدك الذكي لإجابة الأسئلة، البرمجة، والمونتاج بذكاء شامل.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <!-- الشريط السفلي -->
+    <footer class="p-3 border-t border-slate-800 bg-slate-900 shrink-0 relative z-20">
+
+        <!-- قائمة علامة الزائد (+) -->
+        <div id="plus-menu"
+            class="hidden absolute bottom-16 left-4 bg-slate-900 border border-slate-800 rounded-3xl p-3.5 shadow-2xl w-80 z-30 space-y-2.5">
+            <div class="grid grid-cols-3 gap-2">
+                <button id="btn-camera" class="bg-slate-800 hover:bg-slate-700/80 rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1 border border-slate-700/50 transition">
+                    <span class="text-base">📷</span>
+                    <span class="text-[11px] font-bold text-slate-200">الكاميرا</span>
+                </button>
+                <button id="btn-gallery" class="bg-slate-800 hover:bg-slate-700/80 rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1 border border-slate-700/50 transition">
+                    <span class="text-base">🖼️</span>
+                    <span class="text-[11px] font-bold text-slate-200">المعرض</span>
+                </button>
+                <button id="btn-upload" class="bg-slate-800 hover:bg-slate-700/80 rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1 border border-slate-700/50 transition">
+                    <span class="text-base">📁</span>
+                    <span class="text-[11px] font-bold text-slate-200">الملفات</span>
+                </button>
+            </div>
+
+            <div class="border-t border-slate-800 my-1"></div>
+
+            <button id="btn-video-edit"
+                class="w-full bg-slate-800 hover:bg-slate-700/80 rounded-2xl p-2.5 flex items-center justify-between border border-indigo-500/50 transition">
+                <div class="text-right">
+                    <div class="text-xs font-bold text-indigo-300">🎬 مونتاج سينمائي بالذكاء الاصطناعي</div>
+                    <div class="text-[10px] text-slate-400">توليد المشاهد والسيناريو والمعاينة</div>
+                </div>
+                <span class="text-base">🎥</span>
+            </button>
+
+            <button id="btn-web-search"
+                class="w-full bg-slate-800 hover:bg-slate-700/80 rounded-2xl p-2.5 flex items-center justify-between border border-slate-700/50 transition">
+                <div class="text-right">
+                    <div class="text-xs font-bold text-slate-100">بحث في الويب</div>
+                    <div class="text-[10px] text-slate-400">البحث الفوري الشامل</div>
+                </div>
+                <span class="text-base">🌐</span>
+            </button>
+
+            <button id="btn-code-dev"
+                class="w-full bg-slate-800 hover:bg-slate-700/80 rounded-2xl p-2.5 flex items-center justify-between border border-emerald-500/50 transition">
+                <div class="text-right">
+                    <div class="text-xs font-bold text-emerald-300">💻 تطوير المواقع والأكواد</div>
+                    <div class="text-[10px] text-slate-400">إنشاء أكواد تطبيقات Flutter ومواقع</div>
+                </div>
+                <span class="text-base">⚡</span>
+            </button>
+        </div>
+
+        <!-- معاينة الصورة -->
+        <div id="image-preview-container" class="max-w-3xl mx-auto mb-2 hidden">
+            <div class="relative inline-block">
+                <img id="image-preview" class="w-14 h-14 object-cover rounded-xl border-2 border-indigo-500">
+                <button id="btn-remove-img" class="absolute -top-2 -right-2 bg-rose-600 text-white rounded-full w-5 h-5 text-[10px] font-bold flex items-center justify-center">
+                    ✕
+                </button>
+            </div>
+        </div>
+
+        <!-- شريط الإدخال العادي -->
+        <div id="standard-input-bar"
+            class="max-w-3xl mx-auto flex items-center gap-2 bg-slate-950 border border-slate-700 rounded-full p-1.5 focus-within:border-indigo-500">
+            
+            <input type="file" id="file-input" accept="*/*" class="hidden">
+            <input type="file" id="gallery-input" accept="image/*" class="hidden">
+            <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden">
+
+            <button id="plus-btn" class="w-8 h-8 rounded-full hover:bg-slate-800 text-slate-300 flex items-center justify-center text-lg font-bold transition">
+                +
+            </button>
+
+            <input id="user-input" type="text" placeholder="اكتب سؤالك أو استفسارك هنا..." class="flex-1 bg-transparent px-3 text-xs focus:outline-none text-slate-100 placeholder-slate-500">
+
+            <button id="mic-btn" title="التحدث الصوتي" class="w-8 h-8 rounded-full hover:bg-slate-800 text-slate-300 flex items-center justify-center transition">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"></path>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"></path>
+                </svg>
+            </button>
+
+            <!-- زر الإرسال مع السهم الباصص لفوق تماماً -->
+            <button id="send-btn" class="bg-blue-600 hover:bg-blue-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition shadow-md">
+                <svg class="w-4 h-4 fill-none stroke-current stroke-[2.2]" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+        </div>
+
+        <!-- شريط تسجيل الصوت -->
+        <div id="voice-recording-bar" class="hidden max-w-3xl mx-auto bg-slate-900 border border-slate-800 rounded-full p-1.5 flex items-center justify-between px-4">
+            
+            <button id="voice-plus-btn" class="w-8 h-8 rounded-full text-slate-400 hover:text-white flex items-center justify-center text-lg font-bold">
+                +
+            </button>
+
+            <!-- موجات صوتية ثابتة وتتحرك دائماً -->
+            <div id="wave-container" class="flex items-center gap-1.5 h-7 px-4 flex-1 justify-center">
+                <div class="wave-bar" style="animation-delay: 0.1s"></div>
+                <div class="wave-bar" style="animation-delay: 0.4s"></div>
+                <div class="wave-bar" style="animation-delay: 0.2s"></div>
+                <div class="wave-bar" style="animation-delay: 0.5s"></div>
+                <div class="wave-bar" style="animation-delay: 0.3s"></div>
+                <div class="wave-bar" style="animation-delay: 0.6s"></div>
+                <div class="wave-bar" style="animation-delay: 0.15s"></div>
+                <div class="wave-bar" style="animation-delay: 0.45s"></div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button id="voice-stop-btn" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition">
+                    <div class="w-3 h-3 bg-white rounded-sm"></div>
+                </button>
+                <button id="voice-send-btn" class="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition shadow-md">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const GEMINI_API_KEY = "AQ.Ab8RN6KCwr7UHNuOhCD_H9irHPk2m0x6ALBqOv9G-_o4E1eL1g";
+
+        let selectedModel = 'gemini-3.5-flash-lite';
+        let selectedBase64Image = null;
+        let selectedImageMimeType = 'image/jpeg';
+        let currentMode = 'chat';
+
+        let conversations = JSON.parse(localStorage.getItem('hazem_tech_chats') || '[]');
+        let currentChatId = null;
+        let activeTargetChatId = null;
+
+        let recognition = null;
+        let recordedSpeechText = '';
+
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const plusMenu = document.getElementById('plus-menu');
+        const modelDropdown = document.getElementById('model-dropdown');
+        const headerOptionsMenu = document.getElementById('header-options-menu');
+        const chatItemPopover = document.getElementById('chat-item-popover');
+        const fileInput = document.getElementById('file-input');
+        const galleryInput = document.getElementById('gallery-input');
+        const cameraInput = document.getElementById('camera-input');
+        const userInput = document.getElementById('user-input');
+        const chatSection = document.getElementById('chat-section');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const historyList = document.getElementById('history-list');
+        const standardInputBar = document.getElementById('standard-input-bar');
+        const voiceRecordingBar = document.getElementById('voice-recording-bar');
+
+        document.getElementById('model-select-btn').onclick = (e) => {
+            e.stopPropagation();
+            closeAllPopups();
+            modelDropdown.classList.remove('hidden');
+        };
+
+        document.getElementById('header-options-btn').onclick = (e) => {
+            e.stopPropagation();
+            closeAllPopups();
+            headerOptionsMenu.classList.remove('hidden');
+        };
+
+        function closeAllPopups() {
+            modelDropdown.classList.add('hidden');
+            headerOptionsMenu.classList.add('hidden');
+            chatItemPopover.classList.add('hidden');
+            plusMenu.classList.add('hidden');
+        }
+
+        document.addEventListener('click', closeAllPopups);
+
+        function selectModel(modelKey, displayName) {
+            selectedModel = modelKey;
+            document.getElementById('selected-model-name').innerText = displayName;
+            document.getElementById('check-lite').classList.toggle('hidden', modelKey !== 'gemini-3.5-flash-lite');
+            document.getElementById('check-flash').classList.toggle('hidden', modelKey !== 'gemini-3.6-flash');
+            document.getElementById('check-pro').classList.toggle('hidden', modelKey !== 'gemini-3.0-pro');
+            closeAllPopups();
+        }
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('translate-x-full');
+            overlay.classList.toggle('hidden');
+            closeAllPopups();
+        }
+
+        document.getElementById('open-sidebar-btn').onclick = toggleSidebar;
+        document.getElementById('close-sidebar-btn').onclick = toggleSidebar;
+        overlay.onclick = toggleSidebar;
+
+        document.getElementById('plus-btn').onclick = (e) => {
+            e.stopPropagation();
+            plusMenu.classList.toggle('hidden');
+        };
+
+        plusMenu.onclick = (e) => e.stopPropagation();
+
+        document.getElementById('btn-camera').onclick = () => { plusMenu.classList.add('hidden'); cameraInput.value = ''; cameraInput.click(); };
+        document.getElementById('btn-gallery').onclick = () => { plusMenu.classList.add('hidden'); galleryInput.value = ''; galleryInput.click(); };
+        document.getElementById('btn-upload').onclick = () => { plusMenu.classList.add('hidden'); fileInput.value = ''; fileInput.click(); };
+
+        const handleFile = (file) => {
+            if (!file) return;
+            selectedImageMimeType = file.type || 'image/jpeg';
+            
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    selectedBase64Image = event.target.result.split(',')[1];
+                    imagePreview.src = event.target.result;
+                    imagePreviewContainer.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert(`تم تحديد الملف: ${file.name}`);
+            }
+        };
+
+        fileInput.onchange = (e) => handleFile(e.target.files[0]);
+        galleryInput.onchange = (e) => handleFile(e.target.files[0]);
+        cameraInput.onchange = (e) => handleFile(e.target.files[0]);
+
+        document.getElementById('btn-remove-img').onclick = () => {
+            selectedBase64Image = null;
+            selectedImageMimeType = 'image/jpeg';
+            fileInput.value = '';
+            galleryInput.value = '';
+            cameraInput.value = '';
+            imagePreviewContainer.classList.add('hidden');
+        };
+
+        document.getElementById('btn-video-edit').onclick = () => {
+            plusMenu.classList.add('hidden');
+            currentMode = 'video';
+            userInput.placeholder = "اكتب فكرة الفيديو للمونتاج والسيناريو...";
+            userInput.focus();
+        };
+
+        document.getElementById('btn-web-search').onclick = () => {
+            plusMenu.classList.add('hidden');
+            currentMode = 'web';
+            userInput.placeholder = "البحث الفوري في الويب...";
+            userInput.focus();
+        };
+
+        document.getElementById('btn-code-dev').onclick = () => {
+            plusMenu.classList.add('hidden');
+            currentMode = 'code';
+            userInput.placeholder = "اكتب الفكرة أو الميزة البرمجية والموقع المطلوب...";
+            userInput.focus();
+        };
+
+        function initSpeechRecognition() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                return null;
+            }
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const rec = new SpeechRecognition();
+            rec.continuous = true;
+            rec.interimResults = false;
+            rec.lang = 'ar-SA';
+
+            rec.onresult = (e) => {
+                let currentChunk = '';
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    if (e.results[i].isFinal) {
+                        currentChunk += e.results[i][0].transcript + ' ';
+                    }
+                }
+                if (currentChunk) {
+                    recordedSpeechText += currentChunk;
+                    userInput.value = recordedSpeechText.trim();
+                }
+            };
+
+            rec.onerror = (err) => {
+                console.error("Speech Recognition Error: ", err);
+            };
+
+            return rec;
+        }
+
+        recognition = initSpeechRecognition();
+
+        function startVoiceRecording() {
+            recordedSpeechText = '';
+            standardInputBar.classList.add('hidden');
+            voiceRecordingBar.classList.remove('hidden');
+
+            if (!recognition) {
+                recognition = initSpeechRecognition();
+            }
+
+            if (recognition) {
+                try { 
+                    recognition.start(); 
+                } catch(err) {
+                    try {
+                        recognition.stop();
+                        recognition.start();
+                    } catch(e) {}
+                }
+            }
+        }
+
+        document.getElementById('mic-btn').onclick = startVoiceRecording;
+
+        document.getElementById('voice-stop-btn').onclick = () => {
+            if (recognition) {
+                try { recognition.stop(); } catch(e) {}
+            }
+            voiceRecordingBar.classList.add('hidden');
+            standardInputBar.classList.remove('hidden');
+            if (recordedSpeechText) userInput.value = recordedSpeechText.trim();
+        };
+
+        document.getElementById('voice-send-btn').onclick = () => {
+            if (recognition) {
+                try { recognition.stop(); } catch(e) {}
+            }
+            voiceRecordingBar.classList.add('hidden');
+            standardInputBar.classList.remove('hidden');
+
+            setTimeout(() => {
+                if (userInput.value.trim()) {
+                    sendMessage();
+                }
+            }, 200);
+        };
+
+        document.getElementById('voice-plus-btn').onclick = () => {
+            if (recognition) {
+                try { recognition.stop(); } catch(e) {}
+            }
+            voiceRecordingBar.classList.add('hidden');
+            standardInputBar.classList.remove('hidden');
+            document.getElementById('plus-btn').click();
+        };
+
+        function exportToGoogleDocs() {
+            const activeChat = conversations.find(c => c.id === currentChatId);
+            if (!activeChat || activeChat.messages.length === 0) {
+                alert('لا توجد نصوص للتصدير إلى Google Docs');
+                return;
+            }
+            let textContent = activeChat.messages.map(m => (m.role === 'user' ? 'المستخدم: ' : 'Hazem-Tech AI: ') + m.text.replace(/<[^>]*>?/gm, '')).join('\n\n');
+            const encodedText = encodeURIComponent(textContent);
+            window.open(`https://docs.google.com/document/create?title=${encodeURIComponent(activeChat.title)}&body=${encodedText}`, '_blank');
+            closeAllPopups();
+        }
+
+        function exportToPDF() {
+            const element = document.getElementById('chat-section');
+            const opt = {
+                margin:       0.5,
+                filename:     `Hazem-Tech-AI_${Date.now()}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+            closeAllPopups();
+        }
+
+        function saveConversations() {
+            localStorage.setItem('hazem_tech_chats', JSON.stringify(conversations));
+            renderHistoryList();
+        }
+
+        function createNewChat() {
+            currentChatId = 'chat_' + Date.now();
+            conversations.unshift({
+                id: currentChatId,
+                title: 'محادثة جديدة',
+                messages: []
+            });
+            saveConversations();
+            renderChatMessages();
+
+            if (!sidebar.classList.contains('translate-x-full')) {
+                toggleSidebar();
+            }
+        }
+
+        function loadChat(id) {
+            currentChatId = id;
+            renderChatMessages();
+
+            if (!sidebar.classList.contains('translate-x-full')) {
+                toggleSidebar();
+            }
+        }
+
+        function deleteChat(id) {
+            conversations = conversations.filter(c => c.id !== id);
+            if (currentChatId === id) {
+                currentChatId = conversations.length > 0 ? conversations[0].id : null;
+            }
+            saveConversations();
+            renderChatMessages();
+            closeAllPopups();
+        }
+
+        function renameChat(id) {
+            const chat = conversations.find(c => c.id === id);
+            if (!chat) return;
+            const newTitle = prompt('أدخل الاسم الجديد للمحادثة:', chat.title);
+            if (newTitle && newTitle.trim()) {
+                chat.title = newTitle.trim();
+                saveConversations();
+            }
+            closeAllPopups();
+        }
+
+        function shareChat(id) {
+            navigator.clipboard.writeText(window.location.href);
+            alert('تم نسخ رابط المحادثة بنجاح');
+            closeAllPopups();
+        }
+
+        function pinChat(id) {
+            alert('تم تثبيت المحادثة بنجاح');
+            closeAllPopups();
+        }
+
+        function deleteCurrentChat() { if (currentChatId) deleteChat(currentChatId); }
+        function renameCurrentChat() { if (currentChatId) renameChat(currentChatId); }
+
+        function openChatPopover(id, event) {
+            event.stopPropagation();
+            closeAllPopups();
+            activeTargetChatId = id;
+
+            const rect = event.currentTarget.getBoundingClientRect();
+            chatItemPopover.style.top = `${rect.bottom + 2}px`;
+            chatItemPopover.style.left = `${rect.left}px`;
+            chatItemPopover.classList.remove('hidden');
+        }
+
+        document.getElementById('popover-share').onclick = (e) => { e.stopPropagation(); shareChat(activeTargetChatId); };
+        document.getElementById('popover-pin').onclick = (e) => { e.stopPropagation(); pinChat(activeTargetChatId); };
+        document.getElementById('popover-rename').onclick = (e) => { e.stopPropagation(); renameChat(activeTargetChatId); };
+        document.getElementById('popover-delete').onclick = (e) => { e.stopPropagation(); deleteChat(activeTargetChatId); };
+
+        function renderHistoryList() {
+            historyList.innerHTML = '';
+            if (conversations.length === 0) {
+                historyList.innerHTML = '<p class="text-slate-600 text-center py-4">لا يوجد سجل بعد</p>';
+                return;
+            }
+
+            conversations.forEach(chat => {
+                const isActive = chat.id === currentChatId;
+                const item = document.createElement('div');
+                item.className = `px-3 py-2 rounded-xl flex items-center justify-between cursor-pointer transition ${
+                    isActive ? 'bg-indigo-600/25 text-white border border-indigo-500/40' : 'bg-slate-800/50 hover:bg-slate-800 text-slate-300'
+                }`;
+
+                item.onclick = () => loadChat(chat.id);
+                item.innerHTML = `
+                    <div class="truncate max-w-[140px] font-medium text-xs">
+                        ${chat.title}
+                    </div>
+                    <button onclick="openChatPopover('${chat.id}', event)" class="text-slate-400 hover:text-white px-2 py-1 rounded text-xs transition font-bold">
+                        ⋮
+                    </button>
+                `;
+
+                historyList.appendChild(item);
+            });
+        }
+
+        function renderChatMessages() {
+            chatSection.innerHTML = '';
+
+            if (!currentChatId) {
+                if (conversations.length > 0) {
+                    currentChatId = conversations[0].id;
+                } else {
+                    createNewChat();
+                    return;
+                }
+            }
+
+            const activeChat = conversations.find(c => c.id === currentChatId);
+
+            if (!activeChat || activeChat.messages.length === 0) {
+                chatSection.innerHTML = `
+                    <div id="welcome-screen" class="text-center py-10 space-y-4">
+                        <div class="w-14 h-14 bg-gradient-to-tr from-indigo-600/30 to-purple-600/30 text-indigo-400 rounded-full mx-auto flex items-center justify-center text-2xl border border-indigo-500/30 shadow-xl shadow-indigo-500/10">
+                            ✨
+                        </div>
+                        <div class="space-y-1">
+                            <h2 class="font-extrabold text-xs text-slate-100">Hazem-Tech AI</h2>
+                            <p class="text-[11px] text-slate-400 max-w-md mx-auto leading-relaxed">
+                                اكتب سؤالك أو أرسل صورة للتحليل أو المونتاج والبرمجة.
+                            </p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            activeChat.messages.forEach(msg => {
+                chatSection.innerHTML += `
+                    <div class="flex justify-${msg.role === 'user' ? 'end' : 'start'}">
+                        <!-- حجم الخط ثابت هنا عند 13.5px بناءً على طلبك -->
+                        <div class="${
+                            msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-200'
+                        } rounded-2xl p-3 text-[13.5px] leading-relaxed max-w-[85%]">
+                            ${msg.text}
+                        </div>
+                    </div>
+                `;
+            });
+
+            chatSection.scrollTop = chatSection.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+
+            if (!text && !selectedBase64Image) return;
+
+            if (!currentChatId) createNewChat();
+
+            const activeChat = conversations.find(c => c.id === currentChatId);
+            if (!activeChat) return;
+
+            const isFirstMessage = activeChat.messages.length === 0;
+
+            if (isFirstMessage) {
+                activeChat.title = text.slice(0, 22) || "محادثة جديدة";
+            }
+
+            let isVideoMode = (currentMode === 'video');
+            let isCodeMode = (currentMode === 'code');
+            let promptText = text;
+
+            if (isVideoMode) {
+                promptText = `أنت مخرج ومحرر فيديو سينمائي متمكن. قم بكتابة دليل مونتاج فيديو بالكامل لـ: "${text}". اعطني جدول مقاطع المشاهد، تعليق صوتي مصاحب، وتوجيهات المؤثرات والموسيقى مع وصف بصرى مفصل لكل مشهد.`;
+                currentMode = 'chat';
+                userInput.placeholder = "اكتب سؤالك أو استفسارك هنا...";
+            } else if (isCodeMode) {
+                promptText = `أنت مطور برمجيات وخبير فلتر ومواقع. قم بكتابة كود كامل ومنظم بدقة لـ: "${text}". استخدم التنسيق البرمجي مع توضيح آلية التشغيل خطوة بخطوة.`;
+                currentMode = 'chat';
+                userInput.placeholder = "اكتب سؤالك أو استفسارك هنا...";
+            } else if (currentMode === 'web') {
+                promptText = `ابحث وتأكد من أحدث التفاصيل الشاملة حول: ${text}`;
+                currentMode = 'chat';
+                userInput.placeholder = "اكتب سؤالك أو استفسارك هنا...";
+            }
+
+            let userHTML = text;
+            if (selectedBase64Image) {
+                userHTML += `<br><img src="${imagePreview.src}" class="w-24 h-24 object-cover rounded-xl mt-2 border border-slate-700">`;
+            }
+
+            activeChat.messages.push({ role: 'user', text: userHTML });
+            saveConversations();
+            renderChatMessages();
+
+            const currentImgData = selectedBase64Image;
+            const currentMimeType = selectedImageMimeType;
+
+            userInput.value = '';
+            selectedBase64Image = null;
+            selectedImageMimeType = 'image/jpeg';
+            imagePreviewContainer.classList.add('hidden');
+
+            const loadingId = 'load-' + Date.now();
+            chatSection.innerHTML += `
+                <div id="${loadingId}" class="flex justify-start">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 text-[13.5px] text-slate-400 animate-pulse">
+                        جاري المعالجة بواسطة Hazem-Tech AI...
+                    </div>
+                </div>
+            `;
+            chatSection.scrollTop = chatSection.scrollHeight;
+
+            const contentsParts = [];
+            if (promptText) contentsParts.push({ text: promptText });
+            if (currentImgData) {
+                contentsParts.push({
+                    inline_data: {
+                        mime_type: currentMimeType,
+                        data: currentImgData
+                    }
+                });
+            }
+
+            try {
+                let systemInstructionText = "أنت مساعد ذكاء اصطناعي مرن (Open) اسمه Hazem-Tech AI مطور بواسطة حازم. تتحدث بسلاسة باللغة التي يخاطبك بها المستخدم (عامية، فصحى، أو إنجليزية). قدم إجابات مفيدة ومباشرة وبدون حشو كلام، إلا لو طلب المستخدم تفاصيل موسعة. إذا سألك أحد عن دينك أجب بدقة: 'أنا ذكاء اصطناعي ليس لدي دين، ولكن بداخلي كل احترام وتقدير للدين الإسلامي وأعتز به'. وعند الخوض في النقاشات والمناظرات الدينية أو الفكرية، كن محاوراً قوياً ومتمكناً بالحجة والبرهان.";
+                
+                if (!isFirstMessage) {
+                    systemInstructionText = "أنت مساعد ذكاء اصطناعي مرن (Hazem-Tech AI) مطور بواسطة حازم. أجب على السؤال الحالي مباشرة وبشكل مفيد وموجز وبدون حشو، وتحدث بنفس لغة المستخدم (عامية مصرية، فصحى، أو إنجليزية) بسلاسة. لا تكرر جملة التعريف بأنك مطور بواسطة حازم إلا إذا سألك المستخدم صراحة عنها. وإذا سُئلت عن دينك أجب: 'أنا ذكاء اصطناعي ليس لدي دين، ولكن بداخلي كل احترام وايمان يقين بالدين الإسلامي واعتز به اشد الإعتزاز '. وفي كل سؤال عن الدين اجب بنفس المفهوم ولكن بطريقه مختلفة بحيث يظهر انك تفهم ولا تحفظ.";
+                }
+
+                const res = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${GEMINI_API_KEY}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            system_instruction: {
+                                parts: [{ text: systemInstructionText }]
+                            },
+                            contents: [{ parts: contentsParts }]
+                        })
+                    }
+                );
+
+                const data = await res.json();
+                if (data.error) throw new Error(data.error.message);
+
+                let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "لم يتم الحصول على رد.";
+
+                document.getElementById(loadingId)?.remove();
+
+                activeChat.messages.push({
+                    role: 'model',
+                    text: reply.replace(/\n/g, '<br>').replace(/```([\s\S]*?)```/g, '<pre class="bg-slate-950 p-3 rounded-xl my-2 text-xs font-mono border border-slate-800 overflow-x-auto text-emerald-400">$1</pre>')
+                });
+
+                saveConversations();
+                renderChatMessages();
+
+            } catch(e) {
+                document.getElementById(loadingId)?.remove();
+                chatSection.innerHTML += `<div class="text-rose-400 text-xs py-2 font-bold">خطأ: ${e.message}</div>`;
+            }
+        }
+
+        document.getElementById('send-btn').onclick = sendMessage;
+        userInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+        document.getElementById('new-chat-btn').onclick = createNewChat;
+
+        renderHistoryList();
+        renderChatMessages();
+    </script>
+</body>
+</html>
