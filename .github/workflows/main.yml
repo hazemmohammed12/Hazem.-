@@ -28,13 +28,26 @@ jobs:
 
       - name: Create Cordova Project
         run: |
-          cordova create myApp com.hazem.tech HazemTech
+          cordova create myApp com.hazem.tech.ai "Hazem-Tech AI"
           cd myApp
+          
+          # نسخ ملف الـ html والأيقونة
           cp ../index.html www/index.html
-          if [ -f ../icon.png ]; then cp ../icon.png www/icon.png; fi
+          if [ -f ../icon.png ]; then
+            mkdir -p res/icon/android
+            cp ../icon.png res/icon/android/icon-96-xhdpi.png
+            cp ../icon.png www/icon.png
+          fi
+          
           cordova platform add android
+          
+          # إضافة صلاحية الميكروفون أوتوماتيكياً لملف الـ AndroidManifest.xml
+          MANIFEST="platforms/android/app/src/main/AndroidManifest.xml"
+          if [ -f "$MANIFEST" ]; then
+            sed -i '/<uses-permission android:name="android.permission.INTERNET"/a \    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />' "$MANIFEST"
+          fi
 
-      - name: Build APK (Debug & Release)
+      - name: Build APK
         run: |
           cd myApp
           cordova build android
@@ -42,5 +55,5 @@ jobs:
       - name: Find and Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: HazemTech-App-APK
+          name: Hazem-Tech-AI-APK
           path: myApp/platforms/android/app/build/outputs/apk/**/*.apk
